@@ -26,20 +26,29 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
 
+      - name: Restore persistent app signing key
+        env:
+          POCO_KEYSTORE_BASE64: ${{ secrets.POCO_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$POCO_KEYSTORE_BASE64"
+          echo "$POCO_KEYSTORE_BASE64" | base64 --decode > app/poco-release-key.jks
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Build debug APK
+      - name: Build installable APK
+        env:
+          POCO_KEYSTORE_PASSWORD: ${{ secrets.POCO_KEYSTORE_PASSWORD }}
+          POCO_KEY_ALIAS: ${{ secrets.POCO_KEY_ALIAS }}
+          POCO_KEY_PASSWORD: ${{ secrets.POCO_KEY_PASSWORD }}
         run: gradle --no-daemon :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: poco-assistant-debug-apk
+          name: poco-assistant-stable-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          retention-days: 14
-
-# Re-run CI after correcting Android SDK package selection.
+          retention-days: 30
