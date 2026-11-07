@@ -30,12 +30,12 @@ public class MainActivity extends Activity {
         root.setPadding(pad, pad, pad, pad);
 
         TextView title = new TextView(this);
-        title.setText("پوکو | نسخه آزمایشی ۰٫۱");
+        title.setText("پوکو | نسخه آزمایشی ۰٫۲");
         title.setTextSize(22);
         root.addView(title);
 
         TextView description = new TextView(this);
-        description.setText("گام اول پل اندرویدی: دریافت اعلان‌های تلگرام و نگهداری محلیِ حداکثر ۳۰ اعلان آخر.");
+        description.setText("آزمایش دریافت اعلان‌های تلگرام؛ این نسخه وضعیت اتصال سرویس و تعداد اعلان‌های دریافتی را هم نشان می‌دهد.");
         description.setTextSize(15);
         description.setPadding(0, dp(8), 0, dp(12));
         root.addView(description);
@@ -69,19 +69,10 @@ public class MainActivity extends Activity {
         root.addView(clearButton);
 
         TextView privacyNote = new TextView(this);
-        privacyNote.setText("حریم خصوصی این نسخه:\n" +
-                "• فقط بسته‌های شناخته‌شده تلگرام در کد پردازش می‌شوند.\n" +
-                "• داده‌ها فقط در فضای خصوصی همین برنامه روی گوشی ذخیره می‌شوند.\n" +
-                "• برنامه مجوز اینترنت، میکروفون، مخاطبان، پیامک یا دسترسی‌پذیری ندارد.\n" +
-                "• برای خواندن اعلان‌ها باید خودت دسترسی را در تنظیمات اندروید فعال کنی.");
+        privacyNote.setText("حریم خصوصی: اعلان‌های شناسایی‌شده تلگرام فقط در حافظه خصوصی برنامه روی گوشی ذخیره می‌شوند. این نسخه اینترنت، میکروفون، مخاطبان، پیامک یا دسترسی‌پذیری نمی‌خواهد.");
         privacyNote.setTextSize(13);
         privacyNote.setPadding(0, dp(12), 0, dp(12));
         root.addView(privacyNote);
-
-        TextView scopeNote = new TextView(this);
-        scopeNote.setText("هنوز در این نسخه وجود ندارد: پاسخ‌دادن به تلگرام، هوش مصنوعی/API، اتوماسیون برنامه‌ها و فعال‌سازی صوتی پس‌زمینه.");
-        scopeNote.setTextSize(13);
-        root.addView(scopeNote);
 
         ScrollView scroll = new ScrollView(this);
         messagesView = new TextView(this);
@@ -103,9 +94,8 @@ public class MainActivity extends Activity {
 
     private void refreshScreen() {
         boolean enabled = hasNotificationAccess();
-        statusView.setText(enabled
-                ? "وضعیت دسترسی اعلان: فعال"
-                : "وضعیت دسترسی اعلان: خاموش (هنوز هیچ داده‌ای دریافت نمی‌شود)");
+        statusView.setText((enabled ? "دسترسی اعلان: فعال" : "دسترسی اعلان: خاموش")
+                + "\n" + NotificationStore.diagnostics(this));
         renderMessages();
     }
 
@@ -121,12 +111,11 @@ public class MainActivity extends Activity {
     private void renderMessages() {
         JSONArray rows = NotificationStore.read(this);
         if (rows.length() == 0) {
-            messagesView.setText("هنوز اعلان تلگرامی ذخیره نشده است.");
+            messagesView.setText("هنوز متن اعلانی ذخیره نشده است.");
             return;
         }
         StringBuilder out = new StringBuilder("اعلان‌های ذخیره‌شده (جدیدترین اول):\n\n");
-        DateFormat dateFormat = DateFormat.getDateTimeInstance(
-                DateFormat.SHORT, DateFormat.SHORT);
+        DateFormat dateFormat = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
         for (int i = 0; i < rows.length(); i++) {
             JSONObject row = rows.optJSONObject(i);
             if (row == null) continue;
