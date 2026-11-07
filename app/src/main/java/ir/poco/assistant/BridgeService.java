@@ -30,6 +30,7 @@ public class BridgeService extends Service {
     private static final String CHANNEL = "poco_bridge_status";
     private ScheduledExecutorService executor;
     private volatile long lastHeartbeat = 0L;
+    private volatile boolean pollingScheduled = false;
 
     @Override public void onCreate() {
         super.onCreate();
@@ -44,7 +45,8 @@ public class BridgeService extends Service {
             return START_NOT_STICKY;
         }
         if (executor != null && executor.isShutdown()) executor = Executors.newSingleThreadScheduledExecutor();
-        if (executor != null && executor.getActiveCount() == 0 && executor.getQueue().isEmpty()) {
+        if (executor != null && !pollingScheduled) {
+            pollingScheduled = true;
             executor.scheduleWithFixedDelay(this::pollSafely, 0, 15, TimeUnit.SECONDS);
         }
         return START_STICKY;
@@ -134,6 +136,7 @@ public class BridgeService extends Service {
     }
 
     @Override public void onDestroy() {
+        pollingScheduled = false;
         if (executor != null) executor.shutdownNow();
         super.onDestroy();
     }
