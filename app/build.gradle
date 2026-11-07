@@ -16,7 +16,7 @@ android {
 
     signingConfigs {
         stable {
-            storeFile file("$rootDir/poco-release-key.jks")
+            storeFile file("$projectDir/poco-release-key.jks")
             storePassword System.getenv("POCO_KEYSTORE_PASSWORD")
             keyAlias System.getenv("POCO_KEY_ALIAS")
             keyPassword System.getenv("POCO_KEY_PASSWORD")
