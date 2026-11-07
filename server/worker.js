@@ -49,6 +49,50 @@ export default {
     const expected = isAssistant ? env.ASSISTANT_TOKEN : env.DEVICE_TOKEN;
     if (!equalSecret(bearer(request), expected)) return json({ error: "unauthorized" }, 401);
 
+    if (request.method === "POST" && path === "/v1/assistant/chat") {
+      if (!env.OPENAI_API_KEY) return json({ error: "ai_not_configured" }, 503);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400); }
+      if (typeof body.input !== "string" || !body.input.trim()) return json({ error: "input_required" }, 400);
+      if (body.input.length > 6000) return json({ error: "input_too_long", max_chars: 6000 }, 413);
+
+      let aiResponse;
+      try {
+        aiResponse = await fetch("https://api.openai.com/v1/responses", {
+          method: "POST",
+          headers: {
+            "authorization": "Bearer " + env.OPENAI_API_KEY,
+            "content-type": "application/json"
+          },
+          body: JSON.stringify({
+            model: env.OPENAI_MODEL || "gpt-6-astra",
+            instructions: "You are Poco, a practical Persian-speaking assistant running as a companion on the user's Android phone. Reply in the language used by the user, be concise and accurate. You cannot claim to have performed actions on the phone unless a separate device command has actually completed. Never request or reveal API keys, passwords, or authentication tokens.",
+            input: body.input,
+            max_output_tokens: 700,
+            store: false
+          })
+        });
+      } catch {
+        return json({ error: "ai_upstream_unavailable" }, 502);
+      }
+
+      const aiData = await aiResponse.json().catch(() => ({}));
+      if (!aiResponse.ok) {
+        return json({
+          error: "ai_request_failed",
+          upstream_status: aiResponse.status,
+          detail: aiData.error?.message || "OpenAI API request failed"
+        }, 502);
+      }
+      const outputText = aiData.output_text || (aiData.output || [])
+        .filter(item => item.type === "message")
+        .flatMap(item => item.content || [])
+        .filter(part => part.type === "output_text")
+        .map(part => part.text)
+        .join("\\n");
+      return json({ ok: true, text: outputText, response_id: aiData.id || null, model: aiData.model || env.OPENAI_MODEL || "gpt-6-astra" });
+    }
+
     if (request.method === "GET" && path === "/v1/assistant/status")
       return forward(env, "/state/status");
 
