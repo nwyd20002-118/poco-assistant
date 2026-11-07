@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -20,6 +21,9 @@ import java.util.Date;
 public class MainActivity extends Activity {
     private TextView statusView;
     private TextView messagesView;
+    private TextView bridgeInfoView;
+    private EditText endpointInput;
+    private EditText tokenInput;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +78,51 @@ public class MainActivity extends Activity {
         privacyNote.setPadding(0, dp(12), 0, dp(12));
         root.addView(privacyNote);
 
+        TextView bridgeTitle = new TextView(this);
+        bridgeTitle.setText("پل ارتباطی پوکو | آزمایشی");
+        bridgeTitle.setTextSize(19);
+        root.addView(bridgeTitle);
+
+        TextView bridgeDescription = new TextView(this);
+        bridgeDescription.setText("نشانی HTTPS سرور و توکن مخصوص همین گوشی را وارد کن. توکن با کلید Android Keystore رمزگذاری می‌شود. این مرحله فقط اتصال و دریافت پاکت فرمان را آزمایش می‌کند؛ هیچ فرمانی روی گوشی اجرا نمی‌شود.");
+        bridgeDescription.setTextSize(13);
+        root.addView(bridgeDescription);
+
+        endpointInput = new EditText(this);
+        endpointInput.setSingleLine(true);
+        endpointInput.setHint("نشانی سرور، مانند https://name.workers.dev");
+        endpointInput.setText(BridgeConfig.endpoint(this));
+        root.addView(endpointInput);
+
+        tokenInput = new EditText(this);
+        tokenInput.setSingleLine(true);
+        tokenInput.setHint("توکن محرمانه دستگاه");
+        tokenInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        root.addView(tokenInput);
+
+        Button saveBridgeButton = new Button(this);
+        saveBridgeButton.setText("ذخیره امن اطلاعات اتصال");
+        saveBridgeButton.setOnClickListener(v -> saveBridgeSettings());
+        root.addView(saveBridgeButton);
+
+        Button startBridgeButton = new Button(this);
+        startBridgeButton.setText("شروع اتصال پوکو");
+        startBridgeButton.setOnClickListener(v -> startBridge());
+        root.addView(startBridgeButton);
+
+        Button stopBridgeButton = new Button(this);
+        stopBridgeButton.setText("توقف اتصال");
+        stopBridgeButton.setOnClickListener(v -> {
+            stopService(new Intent(this, BridgeService.class));
+            bridgeInfoView.setText("وضعیت پل: متوقف");
+        });
+        root.addView(stopBridgeButton);
+
+        bridgeInfoView = new TextView(this);
+        bridgeInfoView.setTextSize(13);
+        bridgeInfoView.setPadding(0, dp(8), 0, dp(8));
+        root.addView(bridgeInfoView);
+
         ScrollView scroll = new ScrollView(this);
         messagesView = new TextView(this);
         messagesView.setTextSize(14);
@@ -97,6 +146,42 @@ public class MainActivity extends Activity {
         statusView.setText((enabled ? "دسترسی اعلان: فعال" : "دسترسی اعلان: خاموش")
                 + "\n" + NotificationStore.diagnostics(this));
         renderMessages();
+        refreshBridgeInfo();
+    }
+
+    private void saveBridgeSettings() {
+        String endpoint = endpointInput.getText().toString().trim().replaceAll("/+$", "");
+        String token = tokenInput.getText().toString().trim();
+        if (!endpoint.startsWith("https://") || token.length() < 20) {
+            Toast.makeText(this, "نشانی باید HTTPS باشد و توکن معتبر وارد شود.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        try {
+            BridgeConfig.save(this, endpoint, token);
+            tokenInput.setText("");
+            Toast.makeText(this, "اطلاعات اتصال به‌صورت رمزگذاری‌شده ذخیره شد.", Toast.LENGTH_LONG).show();
+            refreshBridgeInfo();
+        } catch (Exception e) {
+            Toast.makeText(this, "ذخیره امن انجام نشد.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void startBridge() {
+        if (BridgeConfig.endpoint(this).isEmpty() || BridgeConfig.token(this).isEmpty()) {
+            Toast.makeText(this, "اول نشانی سرور و توکن را ذخیره کن.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent intent = new Intent(this, BridgeService.class);
+        if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(intent);
+        else startService(intent);
+        bridgeInfoView.setText("وضعیت پل: سرویس در حال شروع است...");
+    }
+
+    private void refreshBridgeInfo() {
+        String pending = getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE)
+                .getString("pending_command", "");
+        bridgeInfoView.setText("اطلاعات اتصال: " + (BridgeConfig.endpoint(this).isEmpty() ? "تنظیم نشده" : "ذخیره شده")
+                + "\\nفرمان دریافتی: " + (pending.isEmpty() ? "نداریم" : pending));
     }
 
     private boolean hasNotificationAccess() {
