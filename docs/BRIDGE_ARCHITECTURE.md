@@ -70,4 +70,4 @@ The assistant endpoint is intended to be exposed through a supported custom Chat
 
 ## Current limitations
 
-The relay is a prototype, not a deployed service. The Android app does not yet poll it. No ChatGPT connector is connected. The existing notification listener remains local and is not an unrestricted Telegram API. Android/MIUI background execution and permission constraints still apply.
+The relay is a prototype, not a deployed service. The Android client code now includes polling and heartbeat, but it has not yet been installed or tested on a physical phone. No ChatGPT connector is connected. The existing notification listener remains local and is not an unrestricted Telegram API. Android/MIUI background execution and permission constraints still apply.
