@@ -50,6 +50,13 @@ public class MainActivity extends Activity {
         intro.setPadding(0, 0, 0, dp(14));
         root.addView(intro);
 
+        Button openChat = new Button(this);
+        openChat.setText("شروع گفت‌وگو با پوکو");
+        openChat.setTextSize(17);
+        openChat.setOnClickListener(v -> startActivity(new Intent(this, ChatActivity.class)));
+        root.addView(openChat);
+
+
         connectionView = new TextView(this);
         connectionView.setTextSize(17);
         connectionView.setPadding(0, dp(10), 0, dp(10));
