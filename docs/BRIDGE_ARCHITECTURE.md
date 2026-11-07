@@ -25,6 +25,7 @@ All requests use HTTPS and a bearer token. Assistant endpoints require `ASSISTAN
 
 | Method | Path | Purpose |
 |---|---|---|
+| POST | `/v1/assistant/chat` | Send text to the OpenAI Responses API; returns a text reply |
 | GET | `/v1/assistant/status` | Relay/device heartbeat and pending count |
 | POST | `/v1/assistant/commands` | Queue an allow-listed command |
 | POST | `/v1/device/heartbeat` | Report app/Android/device model |
@@ -50,11 +51,15 @@ A Cloudflare account and the Wrangler CLI are required. From the `server/` direc
 
 1. Run `npx wrangler login`.
 2. Create the Worker secrets using long random values:
+   - `npx wrangler secret put OPENAI_API_KEY` (paste the API key only into the secure Wrangler prompt; never into chat or GitHub)
    - `npx wrangler secret put ASSISTANT_TOKEN`
    - `npx wrangler secret put DEVICE_TOKEN`
 3. Deploy with `npx wrangler deploy`.
 4. Save the resulting HTTPS Worker URL privately. Do not paste either token into chat or commit them to GitHub.
-5. Configure the Android app with the Worker URL and the device token using Android Keystore-backed storage (implementation is a subsequent milestone).
+5. Set an optional Worker variable `OPENAI_MODEL` if you want to override the default model (`gpt-6-astra`).
+6. Configure the Android app with the Worker URL and the device token using Android Keystore-backed storage (implementation is a subsequent milestone).
+
+The `/v1/assistant/chat` endpoint is authenticated with `ASSISTANT_TOKEN`; it calls OpenAI server-side using `OPENAI_API_KEY`. The API key is never sent to the phone. API usage is billed separately from a ChatGPT subscription. The endpoint currently limits input to 6,000 characters and output to 700 tokens.
 
 ## ChatGPT-side connection
 
