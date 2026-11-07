@@ -41,6 +41,43 @@ components:
         command_id: { type: string }
         status: { type: string }
 paths:
+  /v1/assistant/chat:
+    post:
+      operationId: chatWithPocoAI
+      summary: Send a text prompt to Poco's server-side AI
+      description: >
+        Uses the OpenAI Responses API on the server. The OpenAI API key is
+        stored as a Worker secret and is never exposed to the Android app.
+        API usage is billed separately from a ChatGPT subscription.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [input]
+              properties:
+                input:
+                  type: string
+                  minLength: 1
+                  maxLength: 6000
+      responses:
+        '200':
+          description: AI text response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  text: { type: string }
+                  response_id: { type: [string, 'null'] }
+                  model: { type: string }
+        '401':
+          description: Invalid assistant credential
+        '503':
+          description: OpenAI API key is not configured
   /v1/assistant/status:
     get:
       operationId: getPocoStatus
