@@ -70,6 +70,7 @@ public class BridgeService extends Service {
                 lastHeartbeat = now;
             }
             String response = request(endpoint + "/v1/device/commands/next", "GET", token, null);
+            getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE).edit().remove("bridge_error").apply();
             JSONObject envelope = new JSONObject(response);
             JSONObject command = envelope.optJSONObject("command");
             if (command != null) {
