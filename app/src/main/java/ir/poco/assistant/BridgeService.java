@@ -70,14 +70,18 @@ public class BridgeService extends Service {
                 lastHeartbeat = now;
             }
             String response = request(endpoint + "/v1/device/commands/next", "GET", token, null);
-            getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE).edit().remove("bridge_error").apply();
+            getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE).edit()
+                    .remove("bridge_error").putLong("bridge_last_success", System.currentTimeMillis())
+                    .putString("bridge_state", "connected").apply();
             JSONObject envelope = new JSONObject(response);
             JSONObject command = envelope.optJSONObject("command");
             if (command != null) {
                 getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE).edit()
-                        .putString("pending_command", command.toString()).apply();
+                        .putString("pending_command", command.toString()).putString("bridge_state", "command_received").apply();
                 updateNotification("یک فرمان جدید منتظر بررسی شماست");
             } else {
+                getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE).edit()
+                        .putString("bridge_state", "connected").apply();
                 updateNotification("متصل؛ در انتظار فرمان");
             }
         } catch (Exception e) {
@@ -89,7 +93,7 @@ public class BridgeService extends Service {
                 detail += ": " + message;
             }
             getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE).edit()
-                    .putString("bridge_error", detail).apply();
+                    .putString("bridge_error", detail).putString("bridge_state", "error").apply();
             updateNotification("خطای اتصال: " + detail);
         }
     }
