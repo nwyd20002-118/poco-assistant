@@ -80,7 +80,16 @@ public class BridgeService extends Service {
                 updateNotification("متصل؛ در انتظار فرمان");
             }
         } catch (Exception e) {
-            updateNotification("ارتباط برقرار نشد؛ بررسی مجدد انجام می‌شود");
+            String detail = e.getClass().getSimpleName();
+            String message = e.getMessage();
+            if (message != null && !message.trim().isEmpty()) {
+                message = message.replaceAll("[\\r\\n]+", " ").trim();
+                if (message.length() > 110) message = message.substring(0, 110);
+                detail += ": " + message;
+            }
+            getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE).edit()
+                    .putString("bridge_error", detail).apply();
+            updateNotification("خطای اتصال: " + detail);
         }
     }
 
