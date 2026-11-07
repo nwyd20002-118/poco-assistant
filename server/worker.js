@@ -65,7 +65,7 @@ export default {
             "content-type": "application/json"
           },
           body: JSON.stringify({
-            model: env.OPENAI_MODEL || "gpt-6-astra",
+            model: env.OPENAI_MODEL || "gpt-6-luna",
             instructions: "You are Poco, a practical Persian-speaking assistant running as a companion on the user's Android phone. Reply in the language used by the user, be concise and accurate. You cannot claim to have performed actions on the phone unless a separate device command has actually completed. Never request or reveal API keys, passwords, or authentication tokens.",
             input: body.input,
             max_output_tokens: 700,
@@ -90,7 +90,7 @@ export default {
         .filter(part => part.type === "output_text")
         .map(part => part.text)
         .join("\\n");
-      return json({ ok: true, text: outputText, response_id: aiData.id || null, model: aiData.model || env.OPENAI_MODEL || "gpt-6-astra" });
+      return json({ ok: true, text: outputText, response_id: aiData.id || null, model: aiData.model || env.OPENAI_MODEL || "gpt-6-luna" });
     }
 
     if (request.method === "GET" && path === "/v1/assistant/status")
