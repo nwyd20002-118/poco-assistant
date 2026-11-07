@@ -15,8 +15,21 @@ public class TelegramNotificationListener extends NotificationListenerService {
     ));
 
     @Override
+    public void onListenerConnected() {
+        super.onListenerConnected();
+        NotificationStore.recordListenerState(this, true);
+    }
+
+    @Override
+    public void onListenerDisconnected() {
+        NotificationStore.recordListenerState(this, false);
+        super.onListenerDisconnected();
+    }
+
+    @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
         if (sbn == null || !TELEGRAM_PACKAGES.contains(sbn.getPackageName())) return;
+        NotificationStore.recordTelegramCallback(this, sbn.getPackageName());
         Notification notification = sbn.getNotification();
         if (notification == null || notification.extras == null) return;
         Bundle extras = notification.extras;
