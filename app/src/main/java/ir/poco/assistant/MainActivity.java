@@ -1,10 +1,11 @@
 package ir.poco.assistant;
 
 import android.app.Activity;
-import android.content.ComponentName;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
-import android.provider.Settings;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -12,141 +13,119 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.text.DateFormat;
 import java.util.Date;
 
 public class MainActivity extends Activity {
-    private TextView statusView;
-    private TextView messagesView;
-    private TextView bridgeInfoView;
+    private TextView connectionView;
+    private TextView diagnosticsView;
     private EditText endpointInput;
     private EditText tokenInput;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable refreshTask = new Runnable() {
+        @Override public void run() {
+            refreshDashboard();
+            handler.postDelayed(this, 3000);
+        }
+    };
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    @Override protected void onCreate(Bundle state) {
+        super.onCreate(state);
+        int pad = dp(18);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        int pad = dp(16);
         root.setPadding(pad, pad, pad, pad);
 
         TextView title = new TextView(this);
-        title.setText("پوکو | نسخه ۱٫۰٫۰");
-        title.setTextSize(22);
+        title.setText("پوکو | مرکز کنترل پل");
+        title.setTextSize(23);
+        title.setPadding(0, 0, 0, dp(8));
         root.addView(title);
 
-        TextView description = new TextView(this);
-        description.setText("آزمایش دریافت اعلان‌های تلگرام؛ این نسخه وضعیت اتصال سرویس و تعداد اعلان‌های دریافتی را هم نشان می‌دهد.");
-        description.setTextSize(15);
-        description.setPadding(0, dp(8), 0, dp(12));
-        root.addView(description);
+        TextView intro = new TextView(this);
+        intro.setText("هدف این نسخه: اتصال امن و پایدار گوشی به سرور دستیار. در این مرحله فقط وضعیت ارتباط و دریافت پاکت فرمان آزمایش می‌شود؛ هیچ فرمانی روی گوشی اجرا نمی‌شود.");
+        intro.setTextSize(14);
+        intro.setPadding(0, 0, 0, dp(14));
+        root.addView(intro);
 
-        statusView = new TextView(this);
-        statusView.setTextSize(16);
-        root.addView(statusView);
+        connectionView = new TextView(this);
+        connectionView.setTextSize(17);
+        connectionView.setPadding(0, dp(10), 0, dp(10));
+        root.addView(connectionView);
 
-        Button accessButton = new Button(this);
-        accessButton.setText("باز کردن تنظیمات دسترسی اعلان");
-        accessButton.setOnClickListener(v -> {
-            try {
-                startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
-            } catch (Exception e) {
-                Toast.makeText(this, "باز کردن تنظیمات اعلان ممکن نشد.", Toast.LENGTH_LONG).show();
-            }
-        });
-        root.addView(accessButton);
+        Button refresh = new Button(this);
+        refresh.setText("بررسی وضعیت اتصال");
+        refresh.setOnClickListener(v -> refreshDashboard());
+        root.addView(refresh);
 
-        Button refreshButton = new Button(this);
-        refreshButton.setText("به‌روزرسانی فهرست");
-        refreshButton.setOnClickListener(v -> refreshScreen());
-        root.addView(refreshButton);
-
-        Button clearButton = new Button(this);
-        clearButton.setText("پاک کردن اعلان‌های ذخیره‌شده");
-        clearButton.setOnClickListener(v -> {
-            NotificationStore.clear(this);
-            refreshScreen();
-        });
-        root.addView(clearButton);
-
-        TextView privacyNote = new TextView(this);
-        privacyNote.setText("حریم خصوصی: اعلان‌های تلگرام در حافظه خصوصی گوشی می‌مانند. پل ارتباطی فقط از اینترنت برای اتصال HTTPS به سروری که خودت تنظیم می‌کنی استفاده می‌کند؛ این برنامه به میکروفون، مخاطبان، پیامک یا دسترسی‌پذیری دسترسی نمی‌خواهد.");
-        privacyNote.setTextSize(13);
-        privacyNote.setPadding(0, dp(12), 0, dp(12));
-        root.addView(privacyNote);
-
-        TextView bridgeTitle = new TextView(this);
-        bridgeTitle.setText("پل ارتباطی پوکو | آزمایشی");
-        bridgeTitle.setTextSize(19);
-        root.addView(bridgeTitle);
-
-        TextView bridgeDescription = new TextView(this);
-        bridgeDescription.setText("نشانی HTTPS سرور و توکن مخصوص همین گوشی را وارد کن. توکن با کلید Android Keystore رمزگذاری می‌شود. این مرحله فقط اتصال و دریافت پاکت فرمان را آزمایش می‌کند؛ هیچ فرمانی روی گوشی اجرا نمی‌شود.");
-        bridgeDescription.setTextSize(13);
-        root.addView(bridgeDescription);
+        TextView endpointLabel = new TextView(this);
+        endpointLabel.setText("نشانی سرور");
+        endpointLabel.setTextSize(14);
+        root.addView(endpointLabel);
 
         endpointInput = new EditText(this);
         endpointInput.setSingleLine(true);
-        endpointInput.setHint("نشانی سرور، مانند https://name.workers.dev");
+        endpointInput.setHint("https://your-worker.workers.dev");
         endpointInput.setText(BridgeConfig.endpoint(this));
         root.addView(endpointInput);
 
+        TextView tokenLabel = new TextView(this);
+        tokenLabel.setText("توکن محرمانه دستگاه");
+        tokenLabel.setTextSize(14);
+        root.addView(tokenLabel);
+
         tokenInput = new EditText(this);
         tokenInput.setSingleLine(true);
-        tokenInput.setHint("توکن محرمانه دستگاه");
+        tokenInput.setHint("توکن دستگاه را وارد کن");
         tokenInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
         root.addView(tokenInput);
 
-        Button saveBridgeButton = new Button(this);
-        saveBridgeButton.setText("ذخیره امن اطلاعات اتصال");
-        saveBridgeButton.setOnClickListener(v -> saveBridgeSettings());
-        root.addView(saveBridgeButton);
+        Button save = new Button(this);
+        save.setText("ذخیره رمزگذاری‌شده اطلاعات اتصال");
+        save.setOnClickListener(v -> saveBridgeSettings());
+        root.addView(save);
 
-        Button startBridgeButton = new Button(this);
-        startBridgeButton.setText("شروع اتصال پوکو");
-        startBridgeButton.setOnClickListener(v -> startBridge());
-        root.addView(startBridgeButton);
+        Button start = new Button(this);
+        start.setText("شروع اتصال پوکو");
+        start.setOnClickListener(v -> startBridge());
+        root.addView(start);
 
-        Button stopBridgeButton = new Button(this);
-        stopBridgeButton.setText("توقف اتصال");
-        stopBridgeButton.setOnClickListener(v -> {
+        Button stop = new Button(this);
+        stop.setText("توقف اتصال");
+        stop.setOnClickListener(v -> {
             stopService(new Intent(this, BridgeService.class));
-            bridgeInfoView.setText("وضعیت پل: متوقف");
+            connectionView.setText("وضعیت سرویس: متوقف‌شده");
         });
-        root.addView(stopBridgeButton);
+        root.addView(stop);
 
-        bridgeInfoView = new TextView(this);
-        bridgeInfoView.setTextSize(13);
-        bridgeInfoView.setPadding(0, dp(8), 0, dp(8));
-        root.addView(bridgeInfoView);
+        TextView note = new TextView(this);
+        note.setText("امنیت: توکن با Android Keystore رمزگذاری می‌شود. این نسخه به میکروفون، دوربین، مخاطبان، پیامک یا دسترسی‌پذیری نیاز ندارد. اجرای فرمان‌ها تا زمان تکمیل تأیید محلی غیرفعال می‌ماند.");
+        note.setTextSize(13);
+        note.setPadding(0, dp(14), 0, dp(10));
+        root.addView(note);
+
+        diagnosticsView = new TextView(this);
+        diagnosticsView.setTextSize(13);
+        diagnosticsView.setTextIsSelectable(true);
+        root.addView(diagnosticsView);
 
         ScrollView scroll = new ScrollView(this);
-        messagesView = new TextView(this);
-        messagesView.setTextSize(14);
-        messagesView.setTextIsSelectable(true);
-        messagesView.setPadding(0, dp(16), 0, dp(24));
-        scroll.addView(messagesView);
-        root.addView(scroll, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
-        setContentView(root);
-        refreshScreen();
+        scroll.addView(root);
+        setContentView(scroll);
+        refreshDashboard();
     }
 
-    @Override
-    protected void onResume() {
+    @Override protected void onResume() {
         super.onResume();
-        refreshScreen();
+        handler.removeCallbacks(refreshTask);
+        handler.post(refreshTask);
     }
 
-    private void refreshScreen() {
-        boolean enabled = hasNotificationAccess();
-        statusView.setText((enabled ? "دسترسی اعلان: فعال" : "دسترسی اعلان: خاموش")
-                + "\n" + NotificationStore.diagnostics(this));
-        renderMessages();
-        refreshBridgeInfo();
+    @Override protected void onPause() {
+        handler.removeCallbacks(refreshTask);
+        super.onPause();
     }
 
     private void saveBridgeSettings() {
@@ -160,80 +139,53 @@ public class MainActivity extends Activity {
             BridgeConfig.save(this, endpoint, token);
             tokenInput.setText("");
             Toast.makeText(this, "اطلاعات اتصال به‌صورت رمزگذاری‌شده ذخیره شد.", Toast.LENGTH_LONG).show();
-            refreshBridgeInfo();
+            refreshDashboard();
         } catch (Exception e) {
-            Toast.makeText(this, "ذخیره امن انجام نشد.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "ذخیره امن انجام نشد؛ دوباره تلاش کن.", Toast.LENGTH_LONG).show();
         }
     }
 
     private void startBridge() {
-        if (android.os.Build.VERSION.SDK_INT >= 33
-                && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
-                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(
-                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 701);
-            return;
-        }
         if (BridgeConfig.endpoint(this).isEmpty() || BridgeConfig.token(this).isEmpty()) {
-            Toast.makeText(this, "اول نشانی سرور و توکن را ذخیره کن.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "ابتدا نشانی سرور و توکن دستگاه را ذخیره کن.", Toast.LENGTH_LONG).show();
             return;
         }
         Intent intent = new Intent(this, BridgeService.class);
-        if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(intent);
+        if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent);
         else startService(intent);
-        bridgeInfoView.setText("وضعیت پل: سرویس در حال شروع است...");
+        Toast.makeText(this, "درخواست شروع پل ارسال شد.", Toast.LENGTH_SHORT).show();
+        refreshDashboard();
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 701 && grantResults.length > 0
-                && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            startBridge();
-        } else if (requestCode == 701) {
-            Toast.makeText(this, "برای نمایش وضعیت اتصال، مجوز اعلان لازم است.", Toast.LENGTH_LONG).show();
+    private void refreshDashboard() {
+        android.content.SharedPreferences p = getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE);
+        String error = p.getString("bridge_error", "");
+        String state = p.getString("bridge_state", "unknown");
+        long last = p.getLong("bridge_last_success", 0L);
+        String status;
+        if ("connected".equals(state) || "command_received".equals(state)) status = "متصل";
+        else if ("error".equals(state)) status = "خطای اتصال";
+        else status = "هنوز اتصال موفق ثبت نشده";
+        connectionView.setText("● " + status
+                + "\nسرور: " + (BridgeConfig.endpoint(this).isEmpty() ? "تنظیم نشده" : "تنظیم شده")
+                + "\nآخرین ارتباط موفق: " + (last == 0L ? "نداریم" : DateFormat.getDateTimeInstance().format(new Date(last))));
+        String pending = p.getString("pending_command", "");
+        String commandSummary = "فرمان در انتظار: هیچ";
+        if (!pending.isEmpty()) {
+            try {
+                JSONObject command = new JSONObject(pending);
+                commandSummary = "فرمان دریافت‌شده: " + command.optString("action", "نامشخص")
+                        + "\nشناسه: " + command.optString("id", "نامشخص")
+                        + "\nوضعیت: " + command.optString("status", "نامشخص");
+            } catch (Exception ignored) {
+                commandSummary = "یک پاکت فرمان دریافت شده است.";
+            }
         }
-    }
-
-    private void refreshBridgeInfo() {
-        String pending = getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE)
-                .getString("pending_command", "");
-        String error = getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE)
-                .getString("bridge_error", "");
-        bridgeInfoView.setText("اطلاعات اتصال: " + (BridgeConfig.endpoint(this).isEmpty() ? "تنظیم نشده" : "ذخیره شده")
-                + "\nخطای آخر اتصال: " + (error.isEmpty() ? "ثبت نشده" : error)
-                + "\nفرمان دریافتی: " + (pending.isEmpty() ? "نداریم" : pending));
-    }
-
-    private boolean hasNotificationAccess() {
-        String enabledListeners = Settings.Secure.getString(
-                getContentResolver(), "enabled_notification_listeners");
-        if (enabledListeners == null) return false;
-        String component = new ComponentName(
-                this, TelegramNotificationListener.class).flattenToString();
-        return enabledListeners.contains(component);
-    }
-
-    private void renderMessages() {
-        JSONArray rows = NotificationStore.read(this);
-        if (rows.length() == 0) {
-            messagesView.setText("هنوز متن اعلانی ذخیره نشده است.");
-            return;
-        }
-        StringBuilder out = new StringBuilder("اعلان‌های ذخیره‌شده (جدیدترین اول):\n\n");
-        DateFormat dateFormat = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
-        for (int i = 0; i < rows.length(); i++) {
-            JSONObject row = rows.optJSONObject(i);
-            if (row == null) continue;
-            String title = row.optString("title", "");
-            String body = row.optString("text", "");
-            long time = row.optLong("time", 0L);
-            out.append(dateFormat.format(new Date(time))).append('\n');
-            if (!title.isEmpty()) out.append(title).append('\n');
-            if (!body.isEmpty()) out.append(body).append('\n');
-            out.append("\n--------------------\n\n");
-        }
-        messagesView.setText(out.toString());
+        diagnosticsView.setText("جزئیات فنی\n"
+                + "وضعیت داخلی: " + state
+                + "\nخطای آخر: " + (error.isEmpty() ? "ثبت نشده" : error)
+                + "\n" + commandSummary
+                + "\n\nنکته: دریافت فرمان به معنی اجرای آن نیست. اجرای فرمان تا آماده‌شدن سازوکار تأیید امن غیرفعال است.");
     }
 
     private int dp(int value) {
