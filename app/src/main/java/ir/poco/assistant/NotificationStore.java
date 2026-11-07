@@ -31,8 +31,32 @@ public final class NotificationStore {
             }
             prefs.edit().putString(KEY_ROWS, newRows.toString()).apply();
         } catch (JSONException ignored) {
-            // Invalid records are ignored; the app remains running.
         }
+    }
+
+    public static synchronized void recordListenerState(Context context, boolean connected) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean("listener_connected", connected).apply();
+    }
+
+    public static synchronized void recordTelegramCallback(Context context, String packageName) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        prefs.edit()
+                .putInt("telegram_callback_count", prefs.getInt("telegram_callback_count", 0) + 1)
+                .putString("last_callback_package", packageName)
+                .putLong("last_callback_time", System.currentTimeMillis())
+                .apply();
+    }
+
+    public static synchronized String diagnostics(Context context) {
+        SharedPreferences p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        long time = p.getLong("last_callback_time", 0L);
+        String last = time == 0L ? "هنوز هیچ اعلان تلگرامی به سرویس نرسیده"
+                : android.text.format.DateFormat.getTimeFormat(context).format(new java.util.Date(time));
+        return "اتصال سرویس: " + (p.getBoolean("listener_connected", false) ? "وصل" : "قطع/نامشخص")
+                + "\nتعداد اعلان‌های دریافتی تلگرام: " + p.getInt("telegram_callback_count", 0)
+                + "\nآخرین بسته: " + p.getString("last_callback_package", "—")
+                + "\nزمان آخرین دریافت: " + last + "\n\n";
     }
 
     public static synchronized JSONArray read(Context context) {
