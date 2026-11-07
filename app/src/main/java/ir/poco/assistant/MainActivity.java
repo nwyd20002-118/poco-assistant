@@ -167,7 +167,13 @@ public class MainActivity extends Activity {
     }
 
     private void startBridge() {
-        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {\n            requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 701);\n            return;\n        }
+        if (android.os.Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 701);
+            return;
+        }
         if (BridgeConfig.endpoint(this).isEmpty() || BridgeConfig.token(this).isEmpty()) {
             Toast.makeText(this, "اول نشانی سرور و توکن را ذخیره کن.", Toast.LENGTH_LONG).show();
             return;
