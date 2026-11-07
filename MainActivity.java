@@ -24,7 +24,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(16);
@@ -36,9 +35,7 @@ public class MainActivity extends Activity {
         root.addView(title);
 
         TextView description = new TextView(this);
-        description.setText(
-                "گام اول پل اندرویدی: دریافت اعلان‌های تلگرام و نگهداری محلیِ حداکثر ۳۰ اعلان آخر."
-        );
+        description.setText("گام اول پل اندرویدی: دریافت اعلان‌های تلگرام و نگهداری محلیِ حداکثر ۳۰ اعلان آخر.");
         description.setTextSize(15);
         description.setPadding(0, dp(8), 0, dp(12));
         root.addView(description);
@@ -72,22 +69,17 @@ public class MainActivity extends Activity {
         root.addView(clearButton);
 
         TextView privacyNote = new TextView(this);
-        privacyNote.setText(
-                "حریم خصوصی این نسخه:\n" +
+        privacyNote.setText("حریم خصوصی این نسخه:\n" +
                 "• فقط بسته‌های شناخته‌شده تلگرام در کد پردازش می‌شوند.\n" +
                 "• داده‌ها فقط در فضای خصوصی همین برنامه روی گوشی ذخیره می‌شوند.\n" +
                 "• برنامه مجوز اینترنت، میکروفون، مخاطبان، پیامک یا دسترسی‌پذیری ندارد.\n" +
-                "• برای خواندن اعلان‌ها باید خودت دسترسی را در تنظیمات اندروید فعال کنی."
-        );
+                "• برای خواندن اعلان‌ها باید خودت دسترسی را در تنظیمات اندروید فعال کنی.");
         privacyNote.setTextSize(13);
         privacyNote.setPadding(0, dp(12), 0, dp(12));
         root.addView(privacyNote);
 
         TextView scopeNote = new TextView(this);
-        scopeNote.setText(
-                "هنوز در این نسخه وجود ندارد: پاسخ‌دادن به تلگرام، هوش مصنوعی/API، " +
-                "اتوماسیون برنامه‌ها و فعال‌سازی صوتی پس‌زمینه."
-        );
+        scopeNote.setText("هنوز در این نسخه وجود ندارد: پاسخ‌دادن به تلگرام، هوش مصنوعی/API، اتوماسیون برنامه‌ها و فعال‌سازی صوتی پس‌زمینه.");
         scopeNote.setTextSize(13);
         root.addView(scopeNote);
 
@@ -97,11 +89,8 @@ public class MainActivity extends Activity {
         messagesView.setTextIsSelectable(true);
         messagesView.setPadding(0, dp(16), 0, dp(24));
         scroll.addView(messagesView);
-
         root.addView(scroll, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
-        ));
-
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         setContentView(root);
         refreshScreen();
     }
@@ -122,14 +111,10 @@ public class MainActivity extends Activity {
 
     private boolean hasNotificationAccess() {
         String enabledListeners = Settings.Secure.getString(
-                getContentResolver(), "enabled_notification_listeners"
-        );
+                getContentResolver(), "enabled_notification_listeners");
         if (enabledListeners == null) return false;
-
         String component = new ComponentName(
-                this, TelegramNotificationListener.class
-        ).flattenToString();
-
+                this, TelegramNotificationListener.class).flattenToString();
         return enabledListeners.contains(component);
     }
 
@@ -139,26 +124,20 @@ public class MainActivity extends Activity {
             messagesView.setText("هنوز اعلان تلگرامی ذخیره نشده است.");
             return;
         }
-
         StringBuilder out = new StringBuilder("اعلان‌های ذخیره‌شده (جدیدترین اول):\n\n");
         DateFormat dateFormat = DateFormat.getDateTimeInstance(
-                DateFormat.SHORT, DateFormat.SHORT
-        );
-
+                DateFormat.SHORT, DateFormat.SHORT);
         for (int i = 0; i < rows.length(); i++) {
             JSONObject row = rows.optJSONObject(i);
             if (row == null) continue;
-
             String title = row.optString("title", "");
             String body = row.optString("text", "");
             long time = row.optLong("time", 0L);
-
             out.append(dateFormat.format(new Date(time))).append('\n');
             if (!title.isEmpty()) out.append(title).append('\n');
             if (!body.isEmpty()) out.append(body).append('\n');
             out.append("\n--------------------\n\n");
         }
-
         messagesView.setText(out.toString());
     }
 
