@@ -166,7 +166,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void startBridge() {
+    private void startBridge() {\n        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {\n            requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 701);\n            return;\n        }
         if (BridgeConfig.endpoint(this).isEmpty() || BridgeConfig.token(this).isEmpty()) {
             Toast.makeText(this, "اول نشانی سرور و توکن را ذخیره کن.", Toast.LENGTH_LONG).show();
             return;
@@ -175,6 +175,17 @@ public class MainActivity extends Activity {
         if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(intent);
         else startService(intent);
         bridgeInfoView.setText("وضعیت پل: سرویس در حال شروع است...");
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 701 && grantResults.length > 0
+                && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            startBridge();
+        } else if (requestCode == 701) {
+            Toast.makeText(this, "برای نمایش وضعیت اتصال، مجوز اعلان لازم است.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void refreshBridgeInfo() {
