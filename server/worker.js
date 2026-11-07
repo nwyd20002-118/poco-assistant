@@ -64,7 +64,7 @@ export default {
         body: JSON.stringify({
           action: body.action,
           payload: body.payload,
-          requires_user_approval: body.requires_user_approval !== false,
+          requires_user_approval: true,
           created_at: new Date().toISOString()
         })
       });
