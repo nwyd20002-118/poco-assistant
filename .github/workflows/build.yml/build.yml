@@ -1,0 +1,38 @@
+name: Build Poco APK
+
+on:
+  push:
+    paths:
+      - 'poco-assistant-v0.1-source.zip'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download repository
+        uses: actions/checkout@v4
+
+      - name: Extract project
+        run: |
+          unzip -o poco-assistant-v0.1-source.zip -d source
+          find source -name gradlew -type f
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build APK
+        run: |
+          cd source
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Poco-APK
+          path: source/**/build/outputs/apk/debug/*.apk
