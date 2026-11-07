@@ -49,6 +49,48 @@ export default {
     const expected = isAssistant ? env.ASSISTANT_TOKEN : env.DEVICE_TOKEN;
     if (!equalSecret(bearer(request), expected)) return json({ error: "unauthorized" }, 401);
 
+    if (request.method === "POST" && path === "/v1/device/chat") {
+      if (!env.OPENAI_API_KEY) return json({ error: "ai_not_configured" }, 503);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400); }
+      if (!Array.isArray(body.messages) || body.messages.length < 1 || body.messages.length > 24)
+        return json({ error: "messages_must_be_array", max_messages: 24 }, 400);
+      const messages = [];
+      let totalChars = 0;
+      for (const item of body.messages) {
+        if (!item || !["user", "assistant"].includes(item.role) || typeof item.content !== "string")
+          return json({ error: "invalid_message" }, 400);
+        totalChars += item.content.length;
+        if (!item.content.trim() || item.content.length > 6000 || totalChars > 24000)
+          return json({ error: "conversation_too_long" }, 413);
+        messages.push({ role: item.role, content: item.content });
+      }
+      let aiResponse;
+      try {
+        aiResponse = await fetch("https://api.openai.com/v1/responses", {
+          method: "POST",
+          headers: { "authorization": "Bearer " + env.OPENAI_API_KEY, "content-type": "application/json" },
+          body: JSON.stringify({
+            model: env.OPENAI_MODEL || "gpt-6-astra",
+            instructions: "You are Poco, the user's practical Persian-speaking assistant. Your conversational intelligence is provided by OpenAI. Reply naturally in the user's language, remember and use the conversation context included in this request, and be concise but useful. You do not have direct access to the phone. Never claim an action was performed unless a separate device operation has actually completed. Ask for user approval before sensitive actions. Never request or reveal API keys, passwords, or authentication tokens.",
+            input: messages,
+            max_output_tokens: 900,
+            store: false
+          })
+        });
+      } catch {
+        return json({ error: "ai_upstream_unavailable" }, 502);
+      }
+      const aiData = await aiResponse.json().catch(() => ({}));
+      if (!aiResponse.ok) return json({ error: "ai_request_failed", upstream_status: aiResponse.status, detail: aiData.error?.message || "OpenAI API request failed" }, 502);
+      const outputText = aiData.output_text || (aiData.output || [])
+        .filter(item => item.type === "message")
+        .flatMap(item => item.content || [])
+        .filter(part => part.type === "output_text")
+        .map(part => part.text).join("\\n");
+      return json({ ok: true, text: outputText, response_id: aiData.id || null, model: aiData.model || env.OPENAI_MODEL || "gpt-6-astra" });
+    }
+
     if (request.method === "POST" && path === "/v1/assistant/chat") {
       if (!env.OPENAI_API_KEY) return json({ error: "ai_not_configured" }, 503);
       let body;
