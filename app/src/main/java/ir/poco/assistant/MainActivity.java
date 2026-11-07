@@ -34,7 +34,7 @@ public class MainActivity extends Activity {
         root.setPadding(pad, pad, pad, pad);
 
         TextView title = new TextView(this);
-        title.setText("پوکو | نسخه آزمایشی ۰٫۲");
+        title.setText("پوکو | نسخه آزمایشی ۰٫۳");
         title.setTextSize(22);
         root.addView(title);
 
@@ -73,7 +73,7 @@ public class MainActivity extends Activity {
         root.addView(clearButton);
 
         TextView privacyNote = new TextView(this);
-        privacyNote.setText("حریم خصوصی: اعلان‌های شناسایی‌شده تلگرام فقط در حافظه خصوصی برنامه روی گوشی ذخیره می‌شوند. این نسخه اینترنت، میکروفون، مخاطبان، پیامک یا دسترسی‌پذیری نمی‌خواهد.");
+        privacyNote.setText("حریم خصوصی: اعلان‌های تلگرام در حافظه خصوصی گوشی می‌مانند. پل ارتباطی فقط از اینترنت برای اتصال HTTPS به سروری که خودت تنظیم می‌کنی استفاده می‌کند؛ این برنامه به میکروفون، مخاطبان، پیامک یا دسترسی‌پذیری دسترسی نمی‌خواهد.");
         privacyNote.setTextSize(13);
         privacyNote.setPadding(0, dp(12), 0, dp(12));
         root.addView(privacyNote);
