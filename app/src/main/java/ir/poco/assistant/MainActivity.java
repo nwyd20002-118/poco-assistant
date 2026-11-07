@@ -34,7 +34,7 @@ public class MainActivity extends Activity {
         root.setPadding(pad, pad, pad, pad);
 
         TextView title = new TextView(this);
-        title.setText("پوکو | نسخه آزمایشی ۰٫۳");
+        title.setText("پوکو | نسخه ۱٫۰٫۰");
         title.setTextSize(22);
         root.addView(title);
 
@@ -198,8 +198,11 @@ public class MainActivity extends Activity {
     private void refreshBridgeInfo() {
         String pending = getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE)
                 .getString("pending_command", "");
+        String error = getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE)
+                .getString("bridge_error", "");
         bridgeInfoView.setText("اطلاعات اتصال: " + (BridgeConfig.endpoint(this).isEmpty() ? "تنظیم نشده" : "ذخیره شده")
-                + "\\nفرمان دریافتی: " + (pending.isEmpty() ? "نداریم" : pending));
+                + "\nخطای آخر اتصال: " + (error.isEmpty() ? "ثبت نشده" : error)
+                + "\nفرمان دریافتی: " + (pending.isEmpty() ? "نداریم" : pending));
     }
 
     private boolean hasNotificationAccess() {
