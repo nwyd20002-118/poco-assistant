@@ -1,0 +1,86 @@
+openapi: 3.1.0
+info:
+  title: Poco Bridge Assistant API
+  version: 0.1.0
+  description: >
+    Assistant-side API for checking the paired Poco device and queueing
+    allow-listed commands. Every command requires local approval on the phone.
+servers:
+  - url: https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev
+security:
+  - AssistantBearer: []
+components:
+  securitySchemes:
+    AssistantBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+  schemas:
+    CommandRequest:
+      type: object
+      additionalProperties: false
+      required: [action, payload]
+      properties:
+        action:
+          type: string
+          enum:
+            - device.get_status
+            - notifications.list
+            - apps.list_allowed
+            - app.launch_allowed
+            - telegram.prepare_reply
+            - telegram.send_approved
+            - files.list_allowed
+        payload:
+          type: object
+          additionalProperties: true
+    CommandAccepted:
+      type: object
+      properties:
+        accepted: { type: boolean }
+        command_id: { type: string }
+        status: { type: string }
+paths:
+  /v1/assistant/status:
+    get:
+      operationId: getPocoStatus
+      summary: Get paired Poco device status
+      responses:
+        '200':
+          description: Relay and device status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paired: { type: boolean }
+                  device: { type: [object, 'null'] }
+                  pending_commands: { type: integer }
+        '401':
+          description: Invalid assistant credential
+  /v1/assistant/commands:
+    post:
+      operationId: queuePocoCommand
+      summary: Queue a command for local approval on the Poco phone
+      description: >
+        This only queues a request. The phone must display it and receive
+        explicit local user approval before executing any action.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandRequest'
+      responses:
+        '202':
+          description: Command queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandAccepted'
+        '400':
+          description: Invalid request
+        '401':
+          description: Invalid assistant credential
+        '403':
+          description: Action is not allow-listed
