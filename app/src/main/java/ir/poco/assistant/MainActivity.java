@@ -99,6 +99,20 @@ public class MainActivity extends Activity {
         start.setOnClickListener(v -> startBridge());
         root.addView(start);
 
+        Button clearNotifications = new Button(this);
+        clearNotifications.setText("پاک کردن اعلان‌های ذخیره‌شده");
+        clearNotifications.setOnClickListener(v -> new android.app.AlertDialog.Builder(this)
+                .setTitle("پاک کردن اعلان‌ها؟")
+                .setMessage("حداکثر ۳۰ اعلان ذخیره‌شده تلگرام از حافظه پوکو پاک می‌شود.")
+                .setNegativeButton("انصراف", null)
+                .setPositiveButton("پاک کن", (dialog, which) -> {
+                    NotificationStore.clear(this);
+                    refreshDashboard();
+                    Toast.makeText(this, "اعلان‌های ذخیره‌شده پاک شدند.", Toast.LENGTH_SHORT).show();
+                })
+                .show());
+        root.addView(clearNotifications);
+
         Button stop = new Button(this);
         stop.setText("توقف اتصال");
         stop.setOnClickListener(v -> {
@@ -188,7 +202,9 @@ public class MainActivity extends Activity {
                 commandSummary = "یک پاکت فرمان دریافت شده است.";
             }
         }
-        diagnosticsView.setText("جزئیات فنی\n"
+        diagnosticsView.setText("اعلان‌های تلگرام\n"
+                + NotificationStore.diagnostics(this)
+                + "پل ارتباطی\n"
                 + "وضعیت داخلی: " + state
                 + "\nخطای آخر: " + (error.isEmpty() ? "ثبت نشده" : error)
                 + "\n" + commandSummary
