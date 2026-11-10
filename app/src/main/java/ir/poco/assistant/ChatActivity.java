@@ -26,8 +26,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ChatActivity extends Activity {
-    private static final String PREFS = "poco_chat";
-    private static final String HISTORY = "messages";
     private LinearLayout messagesLayout;
     private ScrollView scroll;
     private EditText composer;
@@ -170,12 +168,13 @@ public class ChatActivity extends Activity {
     }
 
     private JSONArray loadHistory() {
-        try { return new JSONArray(getSharedPreferences(PREFS, MODE_PRIVATE).getString(HISTORY, "[]")); }
-        catch (Exception e) { return new JSONArray(); }
+        return ChatHistoryStore.load(this);
     }
 
     private void saveHistory() {
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(HISTORY, history.toString()).apply();
+        if (!ChatHistoryStore.save(this, history)) {
+            Toast.makeText(this, "ذخیره امن گفت‌وگو انجام نشد؛ متن در حافظه دائمی ذخیره نشد.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void renderHistory() {
