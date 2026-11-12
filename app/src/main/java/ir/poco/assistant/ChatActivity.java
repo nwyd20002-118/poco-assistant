@@ -118,7 +118,11 @@ public class ChatActivity extends Activity {
 
     private String askPoco(JSONArray messages) throws Exception {
         URL url = new URL(BridgeConfig.endpoint(this) + "/v1/device/chat");
+        if (!"https".equalsIgnoreCase(url.getProtocol())) {
+            throw new SecurityException("HTTPS is required for Poco chat");
+        }
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setInstanceFollowRedirects(false);
         connection.setRequestMethod("POST");
         connection.setConnectTimeout(20000);
         connection.setReadTimeout(90000);
