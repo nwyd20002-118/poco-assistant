@@ -99,7 +99,12 @@ public class BridgeService extends Service {
     }
 
     private String request(String address, String method, String token, String body) throws Exception {
-        HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
+        URL url = new URL(address);
+        if (!"https".equalsIgnoreCase(url.getProtocol())) {
+            throw new SecurityException("HTTPS is required for the Poco bridge");
+        }
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setInstanceFollowRedirects(false);
         connection.setRequestMethod(method);
         connection.setConnectTimeout(12000);
         connection.setReadTimeout(12000);
