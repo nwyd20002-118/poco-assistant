@@ -23,6 +23,7 @@ public class MainActivity extends Activity {
     private TextView diagnosticsView;
     private EditText endpointInput;
     private EditText tokenInput;
+    private Button rejectCommandButton;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable refreshTask = new Runnable() {
         @Override public void run() {
@@ -121,6 +122,23 @@ public class MainActivity extends Activity {
         });
         root.addView(stop);
 
+        rejectCommandButton = new Button(this);
+        rejectCommandButton.setText("رد کردن فرمان در انتظار");
+        rejectCommandButton.setEnabled(false);
+        rejectCommandButton.setOnClickListener(v -> new android.app.AlertDialog.Builder(this)
+                .setTitle("رد کردن فرمان؟")
+                .setMessage("این فرمان فقط رد می‌شود و هیچ کاری روی گوشی اجرا نخواهد شد.")
+                .setNegativeButton("بازگشت", null)
+                .setPositiveButton("رد کن", (dialog, which) -> {
+                    Intent reject = new Intent(this, BridgeService.class);
+                    reject.setAction(BridgeService.ACTION_REJECT_PENDING);
+                    if (Build.VERSION.SDK_INT >= 26) startForegroundService(reject);
+                    else startService(reject);
+                    Toast.makeText(this, "درخواست رد فرمان ارسال شد.", Toast.LENGTH_SHORT).show();
+                })
+                .show());
+        root.addView(rejectCommandButton);
+
         TextView note = new TextView(this);
         note.setText("امنیت: توکن با Android Keystore رمزگذاری می‌شود. این نسخه به میکروفون، دوربین، مخاطبان، پیامک یا دسترسی‌پذیری نیاز ندارد. اجرای فرمان‌ها تا زمان تکمیل تأیید محلی غیرفعال می‌ماند.");
         note.setTextSize(13);
@@ -191,6 +209,7 @@ public class MainActivity extends Activity {
                 + "\nسرور: " + (BridgeConfig.endpoint(this).isEmpty() ? "تنظیم نشده" : "تنظیم شده")
                 + "\nآخرین ارتباط موفق: " + (last == 0L ? "نداریم" : DateFormat.getDateTimeInstance().format(new Date(last))));
         String pending = p.getString("pending_command", "");
+        if (rejectCommandButton != null) rejectCommandButton.setEnabled(!pending.isEmpty());
         String commandSummary = "فرمان در انتظار: هیچ";
         if (!pending.isEmpty()) {
             try {
