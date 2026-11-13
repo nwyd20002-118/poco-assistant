@@ -5,6 +5,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.IBinder;
 
@@ -27,6 +28,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class BridgeService extends Service {
     public static final String ACTION_STOP = "ir.poco.assistant.BRIDGE_STOP";
+    public static final String ACTION_REJECT_PENDING = "ir.poco.assistant.BRIDGE_REJECT_PENDING";
     private static final String CHANNEL = "poco_bridge_status";
     private ScheduledExecutorService executor;
     private volatile long lastHeartbeat = 0L;
@@ -44,8 +46,16 @@ public class BridgeService extends Service {
             stopSelf();
             return START_NOT_STICKY;
         }
-        if (executor != null && executor.isShutdown()) executor = Executors.newSingleThreadScheduledExecutor();
-        if (executor != null && !pollingScheduled) {
+        if (executor == null || executor.isShutdown()) executor = Executors.newSingleThreadScheduledExecutor();
+        if (intent != null && ACTION_REJECT_PENDING.equals(intent.getAction())) {
+            final boolean wasPollingScheduled = pollingScheduled;
+            executor.execute(() -> {
+                rejectPendingSafely();
+                if (!wasPollingScheduled) stopSelf();
+            });
+            return START_NOT_STICKY;
+        }
+        if (!pollingScheduled) {
             pollingScheduled = true;
             executor.scheduleWithFixedDelay(this::pollSafely, 0, 15, TimeUnit.SECONDS);
         }
@@ -54,6 +64,11 @@ public class BridgeService extends Service {
 
     private void pollSafely() {
         try {
+            SharedPreferences inbox = getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE);
+            if (!inbox.getString("pending_command", "").isEmpty()) {
+                updateNotification("یک فرمان منتظر تصمیم شماست؛ دریافت فرمان جدید متوقف شد");
+                return;
+            }
             String endpoint = BridgeConfig.endpoint(this);
             String token = BridgeConfig.token(this);
             if (endpoint.isEmpty() || token.isEmpty()) {
@@ -95,6 +110,49 @@ public class BridgeService extends Service {
             getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE).edit()
                     .putString("bridge_error", detail).putString("bridge_state", "error").apply();
             updateNotification("خطای اتصال: " + detail);
+        }
+    }
+
+    private void rejectPendingSafely() {
+        try {
+            SharedPreferences inbox = getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE);
+            String raw = inbox.getString("pending_command", "");
+            if (raw.isEmpty()) {
+                updateNotification("فرمان در انتظاری برای رد کردن وجود ندارد");
+                return;
+            }
+
+            JSONObject command = new JSONObject(raw);
+            String id = command.optString("id", "");
+            if (!id.matches("[A-Za-z0-9_-]{1,100}")) {
+                throw new SecurityException("شناسه فرمان معتبر نیست");
+            }
+
+            String endpoint = BridgeConfig.endpoint(this);
+            String token = BridgeConfig.token(this);
+            if (endpoint.isEmpty() || token.isEmpty()) {
+                throw new IllegalStateException("اطلاعات اتصال تنظیم نشده است");
+            }
+
+            JSONObject body = new JSONObject();
+            body.put("status", "rejected");
+            body.put("result", "فرمان توسط کاربر روی گوشی رد شد");
+            request(endpoint + "/v1/device/commands/" + id + "/result", "POST", token, body.toString());
+
+            inbox.edit().remove("pending_command").remove("bridge_error")
+                    .putString("bridge_state", "connected").apply();
+            updateNotification("فرمان رد شد؛ هیچ اقدامی روی گوشی اجرا نشد");
+        } catch (Exception e) {
+            String detail = e.getClass().getSimpleName();
+            String message = e.getMessage();
+            if (message != null && !message.trim().isEmpty()) {
+                message = message.replaceAll("[\\r\\n]+", " ").trim();
+                if (message.length() > 110) message = message.substring(0, 110);
+                detail += ": " + message;
+            }
+            getSharedPreferences("poco_bridge_inbox", MODE_PRIVATE).edit()
+                    .putString("bridge_error", detail).putString("bridge_state", "error").apply();
+            updateNotification("رد فرمان انجام نشد: " + detail);
         }
     }
 
