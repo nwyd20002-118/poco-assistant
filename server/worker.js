@@ -13,6 +13,8 @@
  * for sensitive actions before execution.
  */
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+const COMMAND_RETENTION_MS = 24 * 60 * 60 * 1000;
+const COMMAND_CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
 const ACTIONS = new Set([
   "device.get_status",
   "notifications.list",
@@ -188,9 +190,26 @@ export default {
 export class PocoBridgeState {
   constructor(ctx) { this.ctx = ctx; }
 
+  async cleanupExpiredCommands() {
+    const now = Date.now();
+    const lastCleanup = await this.ctx.storage.get("commands_cleanup_at") || 0;
+    if (now - lastCleanup < COMMAND_CLEANUP_INTERVAL_MS) return;
+
+    await this.ctx.storage.put("commands_cleanup_at", now);
+    const commands = await this.ctx.storage.list({ prefix: "cmd:" });
+    for (const [key, command] of commands) {
+      const terminal = ["approved", "rejected", "completed", "failed"].includes(command.status);
+      const timestamp = Date.parse((terminal && command.updated_at) || command.created_at || "");
+      if (!Number.isFinite(timestamp) || now - timestamp > COMMAND_RETENTION_MS) {
+        await this.ctx.storage.delete(key);
+      }
+    }
+  }
+
   async fetch(request) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/state/status") {
+      await this.cleanupExpiredCommands();
       const device = await this.ctx.storage.get("device") || null;
       const commands = await this.ctx.storage.list({ prefix: "cmd:" });
       const pending = [...commands.values()].filter(x => x.status === "queued" || x.status === "awaiting_approval").length;
@@ -213,6 +232,7 @@ export class PocoBridgeState {
       return json({ accepted: true, command_id: id, status: command.status }, 202);
     }
     if (request.method === "GET" && url.pathname === "/state/commands/next") {
+      await this.cleanupExpiredCommands();
       const commands = await this.ctx.storage.list({ prefix: "cmd:" });
       const next = [...commands.values()]
         .filter(x => x.status === "queued")
