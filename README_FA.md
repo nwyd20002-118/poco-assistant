@@ -1,4 +1,4 @@
-# پوکو — نسخهٔ آزمایشی ۱.۰.۳
+# پوکو — نسخهٔ آزمایشی ۱.۰.۴
 
 برنامهٔ اندرویدی آزمایشی برای گوشی‌هایی با Android 8 به بالا؛ هدف آزمایش اولیه POCO X3 Pro با Android 12 و MIUI 13 است.
 
@@ -29,5 +29,5 @@
 - compileSdk 35
 - targetSdk 35
 - minSdk 26
-- versionCode 13
-- versionName 1.0.3
+- versionCode 14
+- versionName 1.0.4
