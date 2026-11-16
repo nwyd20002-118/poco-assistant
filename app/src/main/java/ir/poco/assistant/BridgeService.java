@@ -162,31 +162,46 @@ public class BridgeService extends Service {
             throw new SecurityException("HTTPS is required for the Poco bridge");
         }
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setInstanceFollowRedirects(false);
-        connection.setRequestMethod(method);
-        connection.setConnectTimeout(12000);
-        connection.setReadTimeout(12000);
-        connection.setRequestProperty("Authorization", "Bearer " + token);
-        connection.setRequestProperty("Accept", "application/json");
-        if (body != null) {
-            connection.setDoOutput(true);
-            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-            try (OutputStream out = connection.getOutputStream()) {
-                out.write(body.getBytes(StandardCharsets.UTF_8));
+        try {
+            connection.setInstanceFollowRedirects(false);
+            connection.setRequestMethod(method);
+            connection.setConnectTimeout(12000);
+            connection.setReadTimeout(12000);
+            connection.setUseCaches(false);
+            connection.setRequestProperty("Authorization", "Bearer " + token);
+            connection.setRequestProperty("Accept", "application/json");
+            if (body != null) {
+                connection.setDoOutput(true);
+                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                try (OutputStream out = connection.getOutputStream()) {
+                    out.write(body.getBytes(StandardCharsets.UTF_8));
+                }
             }
-        }
-        int status = connection.getResponseCode();
-        InputStream stream = status >= 200 && status < 300 ? connection.getInputStream() : connection.getErrorStream();
-        StringBuilder result = new StringBuilder();
-        if (stream != null) {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) result.append(line);
+
+            int status = connection.getResponseCode();
+            InputStream stream = status >= 200 && status < 300
+                    ? connection.getInputStream() : connection.getErrorStream();
+            StringBuilder result = new StringBuilder();
+            if (stream != null) {
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+                    char[] buffer = new char[4096];
+                    int count;
+                    while ((count = reader.read(buffer)) != -1) {
+                        if (result.length() + count > 64 * 1024) {
+                            throw new IllegalStateException("Server response exceeds 64 KiB");
+                        }
+                        result.append(buffer, 0, count);
+                    }
+                }
             }
+            if (status < 200 || status >= 300) {
+                throw new IllegalStateException("HTTP " + status + ": " + result);
+            }
+            return result.toString();
+        } finally {
+            connection.disconnect();
         }
-        connection.disconnect();
-        if (status < 200 || status >= 300) throw new IllegalStateException("HTTP " + status + ": " + result);
-        return result.toString();
     }
 
     private Notification buildNotification(String text) {
