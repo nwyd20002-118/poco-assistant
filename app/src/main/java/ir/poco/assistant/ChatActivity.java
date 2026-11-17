@@ -121,38 +121,54 @@ public class ChatActivity extends Activity {
         if (!"https".equalsIgnoreCase(url.getProtocol())) {
             throw new SecurityException("HTTPS is required for Poco chat");
         }
+
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setInstanceFollowRedirects(false);
-        connection.setRequestMethod("POST");
-        connection.setConnectTimeout(20000);
-        connection.setReadTimeout(90000);
-        connection.setDoOutput(true);
-        connection.setRequestProperty("Authorization", "Bearer " + BridgeConfig.token(this));
-        connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-        connection.setRequestProperty("Accept", "application/json");
-        JSONObject body = new JSONObject();
-        body.put("messages", messages);
-        try (OutputStream out = connection.getOutputStream()) {
-            out.write(body.toString().getBytes(StandardCharsets.UTF_8));
-        }
-        int status = connection.getResponseCode();
-        InputStream stream = status >= 200 && status < 300 ? connection.getInputStream() : connection.getErrorStream();
-        StringBuilder response = new StringBuilder();
-        if (stream != null) {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) response.append(line);
+        try {
+            connection.setInstanceFollowRedirects(false);
+            connection.setRequestMethod("POST");
+            connection.setConnectTimeout(20000);
+            connection.setReadTimeout(90000);
+            connection.setUseCaches(false);
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Authorization", "Bearer " + BridgeConfig.token(this));
+            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            connection.setRequestProperty("Accept", "application/json");
+
+            JSONObject body = new JSONObject();
+            body.put("messages", messages);
+            try (OutputStream out = connection.getOutputStream()) {
+                out.write(body.toString().getBytes(StandardCharsets.UTF_8));
             }
+
+            int status = connection.getResponseCode();
+            InputStream stream = status >= 200 && status < 300
+                    ? connection.getInputStream() : connection.getErrorStream();
+            java.io.ByteArrayOutputStream response = new java.io.ByteArrayOutputStream();
+            if (stream != null) {
+                try (InputStream input = stream) {
+                    byte[] buffer = new byte[4096];
+                    int count;
+                    while ((count = input.read(buffer)) != -1) {
+                        if (response.size() + count > 64 * 1024) {
+                            throw new IllegalStateException("Server response exceeds 64 KiB");
+                        }
+                        response.write(buffer, 0, count);
+                    }
+                }
+            }
+
+            String responseText = new String(response.toByteArray(), StandardCharsets.UTF_8);
+            JSONObject data = responseText.isEmpty() ? new JSONObject() : new JSONObject(responseText);
+            if (status < 200 || status >= 300) {
+                String detail = data.optString("detail", data.optString("error", "HTTP " + status));
+                throw new IllegalStateException(detail);
+            }
+            String text = data.optString("text", "").trim();
+            if (text.isEmpty()) throw new IllegalStateException("پاسخ خالی از سرور دریافت شد");
+            return text;
+        } finally {
+            connection.disconnect();
         }
-        connection.disconnect();
-        JSONObject data = new JSONObject(response.toString());
-        if (status < 200 || status >= 300) {
-            String detail = data.optString("detail", data.optString("error", "HTTP " + status));
-            throw new IllegalStateException(detail);
-        }
-        String text = data.optString("text", "").trim();
-        if (text.isEmpty()) throw new IllegalStateException("پاسخ خالی از سرور دریافت شد");
-        return text;
     }
 
     private JSONObject messageObject(String role, String content) {
