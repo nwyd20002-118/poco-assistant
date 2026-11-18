@@ -46,17 +46,34 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build installable APK
+      - name: Build signed release APK
         env:
           POCO_KEYSTORE_PASSWORD: ${{ secrets.POCO_KEYSTORE_PASSWORD }}
           POCO_KEY_ALIAS: ${{ secrets.POCO_KEY_ALIAS }}
           POCO_KEY_PASSWORD: ${{ secrets.POCO_KEY_PASSWORD }}
-        run: gradle --no-daemon :app:assembleDebug
+        run: gradle --no-daemon :app:assembleRelease
 
-      - name: Upload APK
+      - name: Verify release APK signature and manifest
+        shell: bash
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/poco-apk-signature.txt
+          grep -F "Signer #1 certificate SHA-256 digest: 9d0791498de4fdd9214f0dd19f0558ee8464ae7cbe5ef88f9d5ceae7413cc053" /tmp/poco-apk-signature.txt
+
+          "$AAPT" dump badging "$APK" | grep -F "package: name='ir.poco.assistant' versionCode='16' versionName='1.0.6'"
+
+          if "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -Eq 'android:debuggable.*=true'; then
+            echo "Release APK must not be debuggable."
+            exit 1
+          fi
+
+      - name: Upload signed release APK
         uses: actions/upload-artifact@v4
         with:
-          name: poco-assistant-stable-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: poco-assistant-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
